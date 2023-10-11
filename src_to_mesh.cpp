@@ -24,10 +24,23 @@ int main(int argc, char** argv) {
     std::cout << "Source site xyz: " << sites[i].r.x << ", " << sites[i].r.y << ", " << sites[i].r.z << std::endl;
   }
 
+  // accessing mesh
   const auto& mesh = openmc::model::meshes[openmc::model::mesh_map[1]];
 
   std::cout << "Mesh ID: " << mesh->id() << std::endl;
   std::cout << "Mesh bins: " << mesh->n_bins() << std::endl;
+
+
+  std::vector<size_t> bin_counts(mesh->n_bins(), 0);
+
+  for (const auto& s : sites) {
+    int bin = mesh->get_bin(s.r);
+    bin_counts[bin] += 1;
+    std::cout << "Bin location: " << bin << std::endl;
+  }
+
+  std::vector<double> rel_strengths(bin_counts.begin(), bin_counts.end());
+  for (auto& rs : rel_strengths) { rs /= num_sites; }
 
   openmc_finalize();
 
