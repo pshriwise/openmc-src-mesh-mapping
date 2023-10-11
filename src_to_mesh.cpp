@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
 
   openmc_init(0, nullptr, nullptr);
 
-  int total_sites = 100000;
+  int total_sites = 1e6;
   int max_sites_incr = 100;
   int sites_sampled {};
 
@@ -26,14 +26,14 @@ int main(int argc, char** argv) {
 
   std::vector<size_t> bin_counts(mesh->n_bins(), 0);
 
+  uint64_t seed = 1;
+
   while (sites_sampled < total_sites) {
 
     int n_sites = std::min(total_sites - sites_sampled, max_sites_incr);
 
     // sample source sites
     std::vector<openmc::SourceSite> sites(n_sites);
-
-    uint64_t seed = 1;
 
     for (auto& s : sites) {
       s = openmc::sample_external_source(&seed);
