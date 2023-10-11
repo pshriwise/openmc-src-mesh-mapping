@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
 
   openmc_init(0, nullptr, nullptr);
 
-  int total_sites = 1e8;
+  int total_sites = 1e6;
   int max_sites_incr = 10000;
   int sites_sampled {};
 
@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
   }
 
   timer.stop();
- 
+
   double mapping_time = timer.elapsed();
   timer.reset();
 
