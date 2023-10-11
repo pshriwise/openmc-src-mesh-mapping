@@ -1,5 +1,7 @@
 
+#ifdef SRC_MAP_OPENMP
 #include <omp.h>
+#endif
 
 #include <iostream>
 #include <vector>
@@ -8,6 +10,7 @@
 
 #include "openmc/capi.h"
 #include "openmc/mesh.h"
+#include "openmc/progress_bar.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/timer.h"
@@ -18,9 +21,15 @@ int main(int argc, char** argv) {
 
   openmc_init(0, nullptr, nullptr);
 
-  int total_sites = 1e6;
+  int total_sites = 1e8;
   int max_sites_incr = 10000;
   int sites_sampled {};
+
+  #ifdef SRC_MAP_OPENMP
+  std::cout << "Number of threads used: " << omp_get_max_threads() << std::endl;
+  #else
+  std::cout << "Threading disabled in this compilation" << std::endl;
+  #endif
 
   // accessing mesh
   const auto& mesh = openmc::model::meshes[openmc::model::mesh_map[1]];
@@ -30,7 +39,13 @@ int main(int argc, char** argv) {
 
   std::vector<size_t> bin_counts(mesh->n_bins(), 0);
 
-  std::vector<uint64_t> seeds(omp_get_max_threads());
+  std::vector<uint64_t> seeds;
+  #ifdef SRC_MAP_OPENMP
+    seeds.resize(omp_get_max_threads());
+  #else
+    seeds.resize(1);
+  #endif
+
   for (int i = 0; i < seeds.size(); i++) seeds[i] = i;
 
   std::cout << "Sampling source sites and mapping to the mesh...\n";
@@ -39,15 +54,23 @@ int main(int argc, char** argv) {
 
   timer.start();
 
+  ProgressBar prog_bar{};
+
   while (sites_sampled < total_sites) {
 
     int n_sites = std::min(total_sites - sites_sampled, max_sites_incr);
 
     // sample source sites
     std::vector<openmc::SourceSite> sites(n_sites);
+
 #pragma omp parallel
 {
+    #ifdef SRC_MAP_OPENMP
     uint64_t* seed = &seeds[omp_get_thread_num()];
+    #else
+    uint64_t* seed = &seeds[0];
+    #endif
+
     #pragma omp for
     for (int i = 0; i < sites.size(); i++) {
       sites[i] = openmc::sample_external_source(seed);
@@ -59,10 +82,12 @@ int main(int argc, char** argv) {
     for (int i = 0; i < sites.size(); i++) {
       bin_counts[mesh->get_bin(sites[i].r)] += 1;
     }
+
+    prog_bar.set_value(100. * (double)sites_sampled / (double)total_sites);
   }
 
   timer.stop();
-
+ 
   double mapping_time = timer.elapsed();
   timer.reset();
 
@@ -115,5 +140,4 @@ int main(int argc, char** argv) {
   openmc_finalize();
 
   return 0;
-
 }
