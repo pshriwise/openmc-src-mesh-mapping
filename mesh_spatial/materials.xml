@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="1" name="water">
+    <density units="atom/b-cm" value="0.07416"/>
+    <nuclide ao="2.0" name="H1"/>
+    <nuclide ao="1.0" name="O16"/>
+  </material>
+</materials>

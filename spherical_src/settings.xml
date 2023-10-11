@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>100</particles>
+  <batches>2</batches>
+  <source particle="neutron" strength="1.0" type="independent">
+    <space origin="0.0 0.0 0.0" type="spherical">
+      <r parameters="0 5" type="uniform"/>
+      <cos_theta parameters="0 3.141592653589793" type="uniform"/>
+      <phi parameters="0 6.283185307179586" type="uniform"/>
+    </space>
+  </source>
+</settings>

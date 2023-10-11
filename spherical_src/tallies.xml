@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<tallies>
+  <mesh id="1" library="moab" type="unstructured">
+    <filename>/home/pshriwise/soft/openmc/tests/unit_tests/test_mesh_tets.e</filename>
+  </mesh>
+  <filter id="1" type="mesh">
+    <bins>1</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>flux</scores>
+  </tally>
+</tallies>
