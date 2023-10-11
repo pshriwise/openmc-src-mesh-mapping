@@ -1,6 +1,8 @@
 
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 #include "openmc/capi.h"
 #include "openmc/mesh.h"
@@ -41,6 +43,36 @@ int main(int argc, char** argv) {
 
   std::vector<double> rel_strengths(bin_counts.begin(), bin_counts.end());
   for (auto& rs : rel_strengths) { rs /= num_sites; }
+
+  // Determine total source strength
+  double total_strength = 0.0;
+  for (auto& s : openmc::model::external_sources)
+    total_strength += s->strength();
+
+  std::cout << "Total external source strength: " << total_strength << std::endl;
+
+  // TODO: extend to all mesh types
+  openmc::UnstructuredMesh* umesh_ptr = dynamic_cast<openmc::UnstructuredMesh*>(mesh.get());
+  if (!umesh_ptr) { std::cerr << "Non-unstructured mesh used" << std::endl; return 1; }
+
+  // generate a text output as CSV
+  // Each row contains: OpenMC bin #, centroid (xyz), volume, rel. src strength
+  std::ofstream output("mesh_src_strengths.csv");
+  output << "bin, cx, cy, cz, volume, rel. src" << std::endl;
+
+  for (int i = 0; i < mesh->n_bins(); i++) {
+    std::stringstream line {};
+    line << i << ", ";
+    auto centroid = umesh_ptr->centroid(i);
+    line << centroid.x << ", " << centroid.y << ", " << centroid.z << ", ";
+    line << mesh->volume(i) << ", ";
+    line << rel_strengths[i] << std::endl;
+
+    output << line.str();
+
+  }
+
+  output.close();
 
   openmc_finalize();
 
