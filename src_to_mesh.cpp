@@ -18,6 +18,11 @@
 
 int main(int argc, char** argv) {
 
+  if (argc > 1) {
+    std::cerr << "This app doesn't support commandline arguments" << std::endl;
+    std::exit(1);
+  }
+
   openmc::settings::verbosity = 0;
 
   openmc_init(0, argv, nullptr);
