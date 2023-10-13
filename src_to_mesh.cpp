@@ -1,4 +1,5 @@
 
+
 #ifdef SRC_MAP_OPENMP
 #include <omp.h>
 #endif
@@ -19,7 +20,7 @@ int main(int argc, char** argv) {
 
   openmc::settings::verbosity = 0;
 
-  openmc_init(0, nullptr, nullptr);
+  openmc_init(0, argv, nullptr);
 
   int total_sites = 1e6;
   int max_sites_incr = 10000;
