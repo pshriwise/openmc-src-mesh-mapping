@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
   // accessing mesh
   const auto& mesh = openmc::model::meshes[openmc::model::mesh_map[1]];
 
-  std::cout << "Mesh ID: " << mesh->id() << std::endl;
+  std::cout << "Mesh ID: " << mesh->id_ << std::endl;
   std::cout << "Mesh bins: " << mesh->n_bins() << std::endl;
 
   std::vector<size_t> bin_counts(mesh->n_bins(), 0);
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
   std::vector<double> rel_strengths(bin_counts.begin(), bin_counts.end());
   for (auto& rs : rel_strengths) { rs /= (sites_sampled-missed_bins); }
 
-  if ((missed_bins) > 10){
+  if ((missed_bins) > 0){
     std::cout << "Warning: " << (missed_bins) << " sampled sites were outside the mesh" << std::endl;
   }
 
@@ -144,6 +144,7 @@ int main(int argc, char** argv) {
 
   }
   output.close();
+  
 
   timer.stop();
   double output_time = timer.elapsed();
@@ -155,6 +156,23 @@ int main(int argc, char** argv) {
 
   std::cout << "Source mapping (" << total_sites << " sites): " << mapping_time << "s" << std::endl;
   std::cout << "File output: " << output_time << " s" << std::endl;
+  
+  // Create a log file with the cout standard output
+  std::ofstream log_output("mesh_src_sampling.log");
+  log_output << "Mesh ID: " << mesh->id_ << std::endl;
+  log_output << "Mesh bins: " << mesh->n_bins() << std::endl;
+  if ((missed_bins) > 0){
+    log_output << "Warning: " << (missed_bins) << " sampled sites were outside the mesh" << std::endl;
+  }
+  log_output << "Total external source strength: " << total_strength << std::endl;
+  // print time to log file
+  log_output << "--------------" << std::endl;
+  log_output << "Time Summary: " << std::endl;
+  log_output << "--------------" << std::endl;
+
+  log_output << "Source mapping (" << total_sites << " sites): " << mapping_time << "s" << std::endl;
+  log_output << "File output: " << output_time << " s" << std::endl;
+  log_output.close();
 
   openmc_finalize();
 
