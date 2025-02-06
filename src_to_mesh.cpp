@@ -30,6 +30,7 @@ int main(int argc, char** argv) {
   int total_sites = 1e6;
   int max_sites_incr = 10000;
   int sites_sampled {};
+  int missed_bins {};
 
   #ifdef SRC_MAP_OPENMP
   std::cout << "Number of threads used: " << omp_get_max_threads() << std::endl;
@@ -40,7 +41,7 @@ int main(int argc, char** argv) {
   // accessing mesh
   const auto& mesh = openmc::model::meshes[openmc::model::mesh_map[1]];
 
-  std::cout << "Mesh ID: " << mesh->id() << std::endl;
+  std::cout << "Mesh ID: " << mesh->id_ << std::endl;
   std::cout << "Mesh bins: " << mesh->n_bins() << std::endl;
 
   std::vector<size_t> bin_counts(mesh->n_bins(), 0);
@@ -69,8 +70,8 @@ int main(int argc, char** argv) {
     // sample source sites
     std::vector<openmc::SourceSite> sites(n_sites);
 
-#pragma omp parallel
-{
+  #pragma omp parallel
+  {
     #ifdef SRC_MAP_OPENMP
     uint64_t* seed = &seeds[omp_get_thread_num()];
     #else
@@ -81,12 +82,18 @@ int main(int argc, char** argv) {
     for (int i = 0; i < sites.size(); i++) {
       sites[i] = openmc::sample_external_source(seed);
     }
-}
+  }
     sites_sampled += n_sites;
+    int got_bin {};
 
     #pragma omp parallel for shared(bin_counts)
     for (int i = 0; i < sites.size(); i++) {
-      bin_counts[mesh->get_bin(sites[i].r)] += 1;
+      got_bin = mesh->get_bin(sites[i].r);
+      if (got_bin == -1){
+        missed_bins += 1;
+      } else {
+        bin_counts[got_bin] += 1;
+      }
     }
 
     prog_bar.set_value(100. * (double)sites_sampled / (double)total_sites);
@@ -99,7 +106,11 @@ int main(int argc, char** argv) {
 
 
   std::vector<double> rel_strengths(bin_counts.begin(), bin_counts.end());
-  for (auto& rs : rel_strengths) { rs /= sites_sampled; }
+  for (auto& rs : rel_strengths) { rs /= (sites_sampled-missed_bins); }
+
+  if ((missed_bins) > 0){
+    std::cout << "Warning: " << (missed_bins) << " sampled sites were outside the mesh" << std::endl;
+  }
 
   // Determine total source strength
   double total_strength = 0.0;
@@ -118,19 +129,22 @@ int main(int argc, char** argv) {
   // generate a text output as CSV
   // Each row contains: OpenMC bin #, centroid (xyz), volume, rel. src strength
   std::ofstream output("mesh_src_strengths.csv");
-  output << "bin, cx, cy, cz, volume, rel. src" << std::endl;
+  output << "bin, cx, cy, cz, volume, rel. src, strength, vol. strength" << std::endl;
   for (int i = 0; i < mesh->n_bins(); i++) {
     std::stringstream line {};
     line << i << ", ";
     auto centroid = umesh_ptr->centroid(i);
     line << centroid.x << ", " << centroid.y << ", " << centroid.z << ", ";
     line << mesh->volume(i) << ", ";
-    line << rel_strengths[i] << std::endl;
+    line << rel_strengths[i] << ", ";
+    line << (rel_strengths[i]*total_strength) << ", ";
+    line << (rel_strengths[i]*total_strength/(mesh->volume(i))) << std::endl;
 
     output << line.str();
 
   }
   output.close();
+  
 
   timer.stop();
   double output_time = timer.elapsed();
@@ -142,6 +156,23 @@ int main(int argc, char** argv) {
 
   std::cout << "Source mapping (" << total_sites << " sites): " << mapping_time << "s" << std::endl;
   std::cout << "File output: " << output_time << " s" << std::endl;
+  
+  // Create a log file with the cout standard output
+  std::ofstream log_output("mesh_src_sampling.log");
+  log_output << "Mesh ID: " << mesh->id_ << std::endl;
+  log_output << "Mesh bins: " << mesh->n_bins() << std::endl;
+  if ((missed_bins) > 0){
+    log_output << "Warning: " << (missed_bins) << " sampled sites were outside the mesh" << std::endl;
+  }
+  log_output << "Total external source strength: " << total_strength << std::endl;
+  // print time to log file
+  log_output << "--------------" << std::endl;
+  log_output << "Time Summary: " << std::endl;
+  log_output << "--------------" << std::endl;
+
+  log_output << "Source mapping (" << total_sites << " sites): " << mapping_time << "s" << std::endl;
+  log_output << "File output: " << output_time << " s" << std::endl;
+  log_output.close();
 
   openmc_finalize();
 
